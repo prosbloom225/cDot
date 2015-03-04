@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I. -Wall
+CFLAGS=-I. -Wall  -std=c99 -D_BSD_SOURCE
 DEPS = 
 OBJ = main.o  
 LDFLAGS = 
