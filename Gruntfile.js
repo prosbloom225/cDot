@@ -18,7 +18,7 @@ module.exports = function(grunt) {
 				command: './cdot test',
 			},
 			test: {
-				command: 'tree -I "*.o|node_modules"',
+				command: 'pwd && tree -I "*.o|node_modules" && echo "SELECT * FROM dotfiles" && sqlite3 db.db "SELECT * FROM dotfiles;"',
 			},
 		},
 		watch: {
@@ -33,4 +33,5 @@ module.exports = function(grunt) {
 	});
 	grunt.registerTask('default', ['watch']);
 	grunt.registerTask('run', ['shell:clean', 'shell:make', 'shell:execute', 'shell:test']);
+	grunt.registerTask('exec', ['shell:execute', 'shell:test']);
 }

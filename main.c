@@ -10,8 +10,9 @@
 #include <sqlite3.h>
 
 // Debug defines
-#define DEBUG_OUT  1
-#define HOME "/home/prosbloom/tmp/cdot/home"
+//#define DEBUG_OUT  1
+#define HOME "/home/prosbloom/projects/cdot/home"
+int add_to_db();
 
 
 int main(int argc, char** argv) {
@@ -63,44 +64,31 @@ int main(int argc, char** argv) {
 				char link_file_location[256];
 				snprintf(initial_file_location, sizeof initial_file_location, "%s/%s", path_to_dotfiles, dir->d_name);
 				snprintf(link_file_location, sizeof link_file_location, "%s/%s", HOME, dir->d_name);
-#ifdef DEBUG_OUT
-				printf("\n%s -> %s", initial_file_location, link_file_location);
-#endif
-				// Symlink
-				int ret = symlink(initial_file_location, link_file_location);
-#ifdef DEBUG_OUT
-				if (ret != 0) 
-					printf(" - ERROR Symlinking: %i", ret);
-#endif
 
 				// Add to db
-				sqlite3 *db;
-				char *err_msg = 0;
-				int rc = sqlite3_open("db.db", &db);
-				if (rc != SQLITE_OK) {
-					fprintf(stderr, "Error opening database: %s\n", sqlite3_errmsg(db));
-					sqlite3_close(db);
-					return 1;
-				} 
-				char sql[256];
-				snprintf(sql, sizeof sql, "INSERT INTO dotfiles VALUES ('%s');", dir->d_name);
-#ifdef DEBUG_OUT	
-				printf("\nSQL: %s", sql);
+				int ret = add_to_db(dir);
+
+				// Check for duplicate key
+				if (ret == -1){
+#ifdef DEBUG_OUT
+					printf("\nEntry found for: %s", dir->d_name);
+#endif
+					ret = remove(link_file_location);
+#ifdef DEBUG_OUT
+					if (ret == 0) {
+						printf("\nFile was removed successfully");
+					} else {
+						printf("\nFailed to remove file!");
+					}
 #endif
 
-				// Exec
-				rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-				// If we get a constraint violation, we already linked that file
-				// rm the file before symlinking
-				if (rc == SQLITE_CONSTRAINT) {
-					printf("\nCONSTRINT VIOLATION!");
-				} else if (rc != SQLITE_OK) {
-					fprintf(stderr, "SQL ERROR: %s\n", err_msg);
-					sqlite3_free(err_msg);
-					sqlite3_close(db);
-					return 1;
 				}
-				sqlite3_close(db);
+
+				printf("\n%s -> %s", initial_file_location, link_file_location);
+				// Symlink
+				ret = symlink(initial_file_location, link_file_location);
+				if (ret != 0) 
+					printf(" - ERROR Symlinking: %i", ret);
 
 			}
 		}
@@ -108,5 +96,39 @@ int main(int argc, char** argv) {
 		closedir(dp);
 	}
 
+	return 0;
+}
+
+int add_to_db (struct dirent *dir) {
+
+	// Add to db
+	sqlite3 *db;
+	char *err_msg = 0;
+	int rc = sqlite3_open("db.db", &db);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "Error opening database: %s\n", sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return 0;
+	} 
+	char sql[256];
+	snprintf(sql, sizeof sql, "INSERT INTO dotfiles VALUES ('%s');", dir->d_name);
+#ifdef DEBUG_OUT	
+	printf("\nSQL: %s", sql);
+#endif
+
+	// Exec
+	rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+	// If we get a constraint violation, we already linked that file
+	// rm the file before symlinking
+	if (rc == SQLITE_CONSTRAINT) {
+		printf("\nCONSTRINT VIOLATION!");
+		sqlite3_close(db);
+		return -1;
+	} else if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL ERROR: %s\n", err_msg);
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+		return 1;
+	}
 	return 0;
 }
