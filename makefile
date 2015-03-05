@@ -1,8 +1,8 @@
-CC=gcc
+CC=clang
 CFLAGS=-I. -Wall  -std=c99 -D_BSD_SOURCE
 DEPS = 
 OBJ = main.o  
-LDFLAGS = 
+LDFLAGS = -lsqlite3
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -12,3 +12,4 @@ cdot: $(OBJ)
 
 clean:
 	rm -rf *.o cdot home/*
+	sqlite3 db.db "DELETE FROM dotfiles"

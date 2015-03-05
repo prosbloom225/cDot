@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include <pwd.h>
+#include <sqlite3.h>
 
 // Debug defines
 #define DEBUG_OUT  1
@@ -71,10 +72,41 @@ int main(int argc, char** argv) {
 				if (ret != 0) 
 					printf(" - ERROR Symlinking: %i", ret);
 #endif
+
+				// Add to db
+				sqlite3 *db;
+				char *err_msg = 0;
+				int rc = sqlite3_open("db.db", &db);
+				if (rc != SQLITE_OK) {
+					fprintf(stderr, "Error opening database: %s\n", sqlite3_errmsg(db));
+					sqlite3_close(db);
+					return 1;
+				} 
+				char sql[256];
+				snprintf(sql, sizeof sql, "INSERT INTO dotfiles VALUES ('%s');", dir->d_name);
+#ifdef DEBUG_OUT	
+				printf("\nSQL: %s", sql);
+#endif
+
+				// Exec
+				rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+				// If we get a constraint violation, we already linked that file
+				// rm the file before symlinking
+				if (rc == SQLITE_CONSTRAINT) {
+					printf("\nCONSTRINT VIOLATION!");
+				} else if (rc != SQLITE_OK) {
+					fprintf(stderr, "SQL ERROR: %s\n", err_msg);
+					sqlite3_free(err_msg);
+					sqlite3_close(db);
+					return 1;
+				}
+				sqlite3_close(db);
+
 			}
 		}
 		printf("\n---------------------\nSymlinking complete!\n");
 		closedir(dp);
 	}
+
 	return 0;
 }
