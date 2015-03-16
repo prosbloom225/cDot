@@ -11,5 +11,7 @@ cdot: $(OBJ)
 	gcc -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -rf *.o cdot home/*
-	sqlite3 db.db "DELETE FROM dotfiles"
+	rm -rf *.o cdot home/a home/b
+	sqlite3 home/db.db "DELETE FROM dotfiles"
+install:
+	cp cdot /usr/bin

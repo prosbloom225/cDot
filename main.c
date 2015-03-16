@@ -10,12 +10,20 @@
 #include <sqlite3.h>
 
 // Debug defines
-//#define DEBUG_OUT  1
+#define DEBUG_OUT  1
 #define HOME "/home/prosbloom/projects/cdot/home"
+#define DB_NAME "db.db"
+
+
 int add_to_db();
 
 
 int main(int argc, char** argv) {
+	// Exit if we don't have at least one arg
+	if (argc <= 1){
+		printf("Args invalid\n");
+		return 1;
+	}
 #ifdef DEBUG_OUT
 	printf("ARGS\n");
 	for (int i=0; i < argc; i++) {
@@ -54,6 +62,15 @@ int main(int argc, char** argv) {
 #ifdef DEBUG_OUT
 		printf("HOME: %s\n", HOME);
 #endif
+
+		// Get database location
+#ifndef DB_NAME
+		const char* DB_NAME= "db.db";
+#endif
+		char db_location[256];
+		snprintf(db_location, sizeof db_location, "%s/%s", HOME, DB_NAME);
+		printf("DB Location: %s", db_location);
+
 		// Foreach through the directory and symlink any file to HOME
 		struct dirent *dir;
 		while ((dir = readdir(dp)) != NULL) {
@@ -65,8 +82,9 @@ int main(int argc, char** argv) {
 				snprintf(initial_file_location, sizeof initial_file_location, "%s/%s", path_to_dotfiles, dir->d_name);
 				snprintf(link_file_location, sizeof link_file_location, "%s/%s", HOME, dir->d_name);
 
+
 				// Add to db
-				int ret = add_to_db(dir);
+				int ret = add_to_db(db_location, dir);
 
 				// Check for duplicate key
 				if (ret == -1){
@@ -99,12 +117,13 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-int add_to_db (struct dirent *dir) {
+int add_to_db (char *db_location, struct dirent *dir) {
 
 	// Add to db
 	sqlite3 *db;
 	char *err_msg = 0;
-	int rc = sqlite3_open("db.db", &db);
+
+	int rc = sqlite3_open(db_location, &db);
 	if (rc != SQLITE_OK) {
 		fprintf(stderr, "Error opening database: %s\n", sqlite3_errmsg(db));
 		sqlite3_close(db);
@@ -113,7 +132,7 @@ int add_to_db (struct dirent *dir) {
 	char sql[256];
 	snprintf(sql, sizeof sql, "INSERT INTO dotfiles VALUES ('%s');", dir->d_name);
 #ifdef DEBUG_OUT	
-	printf("\nSQL: %s", sql);
+//	printf("\nSQL: %s", sql);
 #endif
 
 	// Exec
